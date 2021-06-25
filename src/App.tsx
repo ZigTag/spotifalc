@@ -18,7 +18,7 @@ const Button: React.FC<ButtonProps> = ({ id, className, onClick, isClose, childr
 );
 
 const TopBar: React.FC = () => (
-    <div className="h-8 w-full bg-[#0B0B0B] bg-opacity-25 select-none drag-region">
+    <div className="h-8 w-full bg-[#0B0B0B] bg-opacity-25 select-none" data-tauri-drag-region>
         <div className="h-full w-min ml-auto flex flex-row">
             <Button onClick={appWindow.minimize}><IconMinus size="15" /></Button>
             <Button onClick={appWindow.maximize}><IconRectangle size="15" /></Button>
