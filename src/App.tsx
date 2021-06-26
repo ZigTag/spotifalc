@@ -1,6 +1,7 @@
 import React, { PropsWithChildren } from 'react';
 import { IconX, IconRectangle, IconMinus } from '@tabler/icons';
 import { appWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/tauri';
 
 type ButtonProps = { id?: string, className?: string, onClick?: () => void, isClose?: boolean }
 
@@ -27,11 +28,20 @@ const TopBar: React.FC = () => (
     </div>
 );
 
-const App: React.FC = () => (
-    <div>
-        <TopBar />
-        <p>Testing Text</p>
-    </div>
-);
+const App: React.FC = () => {
+    const handleButton = () => {
+        invoke('get_token').then((r) => {
+            console.log(`Token: '${r.token}'\n\nExpiry: '${r.expiry}'`);
+        });
+    };
+
+    return (
+        <div>
+            <TopBar />
+            <p>Testing Text</p>
+            <button type="button" onClick={handleButton}>Testing button</button>
+        </div>
+    );
+};
 
 export default App;
