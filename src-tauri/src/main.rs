@@ -14,15 +14,14 @@ use tokio::{
     time::Duration
 };
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use std::{
     net::{TcpListener, TcpStream},
     path::PathBuf,
-    io,
-    time::SystemTime
+    time::SystemTime,
+    io::{self, Read, Write},
 };
-use std::io::{Read, Write};
-use time::OffsetDateTime;
 
 const CALLBACK_URL: &str = "http://localhost:3001/callback";
 
@@ -37,7 +36,8 @@ struct ConfigToml {
 }
 
 struct TauriState {
-    credentials: TokenInfo,
+    oauth: SpotifyOAuth,
+    spotify_client: Spotify,
     expiry: i64,
 }
 
@@ -48,8 +48,14 @@ struct Credentials {
 }
 
 #[tauri::command]
-fn get_token(state: tauri::State<TauriState>) -> Credentials {
-    Credentials { token: state.credentials.access_token.clone(), expiry: state.expiry}
+fn get_auth_token(state: tauri::State<TauriState>) -> Credentials {
+    Credentials {
+        token: state.spotify_client.clone()
+            .client_credentials_manager.unwrap()
+            .token_info.unwrap()
+            .access_token,
+        expiry: state.expiry
+    }
 }
 
 #[tokio::main]
@@ -69,7 +75,7 @@ async fn main() {
     let server_port = 3001_u16;
 
     let spotify_client: Spotify;
-    let expiry: SystemTime;
+    let expiry: i64;
 
     match get_token_auto(&mut oauth, server_port).await {
         Some(token_info) => {
@@ -81,15 +87,9 @@ async fn main() {
         _ => panic!("Auth Failed"),
     }
 
-    let credentials = spotify_client
-        .client_credentials_manager.unwrap()
-        .token_info.unwrap();
-
-    let expiry = OffsetDateTime::from(expiry);
-
     tauri::Builder::default()
-        .manage(TauriState { credentials, expiry: expiry.unix_timestamp() })
-        .invoke_handler(tauri::generate_handler![get_token])
+        .manage(TauriState { oauth, spotify_client, expiry })
+        .invoke_handler(tauri::generate_handler![get_auth_token])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -109,7 +109,7 @@ async fn init_config(config_dir: PathBuf) -> ConfigToml {
 }
 
 // Code Mostly Copied from https://github.com/Rigellute/spotify-tui/blob/master/src
-fn get_spotify(token_info: TokenInfo) -> (Spotify, SystemTime) {
+fn get_spotify(token_info: TokenInfo) -> (Spotify, i64) {
     let token_expiry = {
         if let Some(expires_at) = token_info.expires_at {
             SystemTime::UNIX_EPOCH
@@ -120,6 +120,8 @@ fn get_spotify(token_info: TokenInfo) -> (Spotify, SystemTime) {
             SystemTime::now()
         }
     };
+
+    let token_expiry = OffsetDateTime::from(token_expiry).unix_timestamp();
 
     let client_credential = SpotifyClientCredentials::default()
         .token_info(token_info)
