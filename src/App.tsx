@@ -30,8 +30,8 @@ const TopBar: React.FC = () => (
 
 const App: React.FC = () => {
     const handleButton = () => {
-        invoke('get_token').then((r) => {
-            console.log(`Token: '${r.token}'\n\nExpiry: '${r.expiry}'`);
+        invoke('get_now_playing').then((r) => {
+            console.log(`Name: '${r}'`);
         });
     };
 

@@ -4,10 +4,10 @@ windows_subsystem = "windows"
 )]
 
 use rspotify::{
-    oauth2::SpotifyOAuth,
-    util::{request_token, process_token},
-    oauth2::{TokenInfo, SpotifyClientCredentials},
-    client::Spotify
+    blocking::oauth2::SpotifyOAuth,
+    blocking::util::{request_token, process_token},
+    blocking::oauth2::{TokenInfo, SpotifyClientCredentials},
+    blocking::client::Spotify
 };
 use tokio::{
     fs,
@@ -58,6 +58,17 @@ fn get_auth_token(state: tauri::State<TauriState>) -> Credentials {
     }
 }
 
+#[tauri::command]
+async fn get_now_playing(state: tauri::State<'_, TauriState>) -> Result<String, String> {
+    let album = state.spotify_client.album("7gaGQp9ZgV1OdSOnNkyHzB");
+    let returnable: Result<String, String> = match album {
+        Ok(album) => Ok(album.name),
+        Err(err) => Err(err.to_string()),
+    };
+
+    returnable
+}
+
 #[tokio::main]
 async fn main() {
     let config_dir = dirs::preference_dir().unwrap().join("spotifalc");
@@ -89,7 +100,7 @@ async fn main() {
 
     tauri::Builder::default()
         .manage(TauriState { oauth, spotify_client, expiry })
-        .invoke_handler(tauri::generate_handler![get_auth_token])
+        .invoke_handler(tauri::generate_handler![get_auth_token, get_now_playing])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -135,17 +146,17 @@ fn get_spotify(token_info: TokenInfo) -> (Spotify, i64) {
 }
 
 async fn get_token_auto(spotify_oauth: &mut SpotifyOAuth, port: u16) -> Option<TokenInfo> {
-    match spotify_oauth.get_cached_token().await {
+    match spotify_oauth.get_cached_token() {
         Some(token_info) => Some(token_info),
         None => match redirect_uri_web_server(spotify_oauth, port) {
-            Ok(mut url) => process_token(spotify_oauth, &mut url).await,
+            Ok(mut url) => process_token(spotify_oauth, &mut url),
             Err(()) => {
                 println!("Starting webserver failed. Continuing with manual authentication");
                 request_token(spotify_oauth);
                 println!("Enter the URL you were redirected to: ");
                 let mut input = String::new();
                 match io::stdin().read_line(&mut input) {
-                    Ok(_) => process_token(spotify_oauth, &mut input).await,
+                    Ok(_) => process_token(spotify_oauth, &mut input),
                     Err(_) => None,
                 }
             }
