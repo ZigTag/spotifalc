@@ -1,4 +1,4 @@
-import React, { PropsWithChildren } from 'react';
+import React, { PropsWithChildren, useState } from 'react';
 import { IconX, IconRectangle, IconMinus } from '@tabler/icons';
 import { appWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/tauri';
@@ -29,18 +29,36 @@ const TopBar: React.FC = () => (
 );
 
 const App: React.FC = () => {
+    const [bgArt, setBgArt] = useState<string>('');
+
     const handleButton = () => {
-        invoke('get_now_playing').then((r) => {
-            console.log(`Name: '${r}'`);
+        invoke('get_now_playing', { albumId: '5ZCo1wqpAvjgHieipwTXzZ' }).then((r) => {
+            console.log(`'${r.images[0].url}'`);
+            setBgArt(r.images[0].url);
         });
     };
 
     return (
-        <div>
-            <TopBar />
-            <p>Testing Text</p>
-            <button type="button" onClick={handleButton}>Testing button</button>
-        </div>
+        <>
+            <div
+                className="w-screen h-screen relative"
+                style={{
+                    background: `url(${bgArt})`,
+                    backgroundPosition: 'center',
+                    backgroundSize: 'cover',
+                    backgroundRepeat: 'no-repeat',
+                    filter: 'blur(50px)',
+                }}
+            />
+            <div
+                className="w-screen h-screen absolute top-0 left-0"
+                style={{ backgroundColor: 'rgba(68, 68, 68, 0.1)' }}
+            >
+                <TopBar />
+                <p>Testing Text</p>
+                <button type="button" onClick={handleButton}>Testing button</button>
+            </div>
+        </>
     );
 };
 
