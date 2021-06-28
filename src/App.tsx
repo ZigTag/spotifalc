@@ -30,17 +30,17 @@ const TopBar: React.FC = () => (
 );
 
 const App: React.FC = () => {
-    const [bgArt, setBgArt] = useState<string>('');
+    const [albumUrl, setAlbumUrl] = useState<string>('');
 
     const getAlbum = () => {
         invoke('get_album', { albumId: '5ZCo1wqpAvjgHieipwTXzZ' }).then((r) => {
-            setBgArt(r.images[0].url);
+            setAlbumUrl(r.images[0].url);
         });
     };
 
     const getCurrentlyPlaying = () => {
         invoke('get_currently_playing', { albumId: '5ZCo1wqpAvjgHieipwTXzZ' }).then((r) => {
-            setBgArt(r.item.album.images[0].url);
+            setAlbumUrl(r.item.album.images[0].url);
         });
     };
 
@@ -49,7 +49,7 @@ const App: React.FC = () => {
             <div
                 className="w-screen h-screen relative"
                 style={{
-                    background: `url(${bgArt})`,
+                    background: `url(${albumUrl})`,
                     backgroundPosition: 'center',
                     backgroundSize: 'cover',
                     backgroundRepeat: 'no-repeat',
