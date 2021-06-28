@@ -92,7 +92,7 @@ const App: React.FC = () => {
     // Detects if currently playing state is set and changes it to '' if it doesn't
     const currentlyPlayingAlbumName = currentlyPlaying
         ? currentlyPlaying.item.album.name
-        : '';
+        : '-';
     const currentlyPlayingAlbumUrl = currentlyPlaying
         ? currentlyPlaying.item.album.images[0].url
         : '';
@@ -103,9 +103,6 @@ const App: React.FC = () => {
     const currentlyPlayingArtists = currentlyPlaying
         ? Array.from(currentlyPlaying.item.artists, (artist) => artist.name)
         : ['-'];
-    const currentlyPlayingAlbum = currentlyPlaying
-        ? currentlyPlaying.item.album.name
-        : '-';
 
     const getCurrentlyPlaying = () => {
         invoke('get_currently_playing').then((r) => {
@@ -120,12 +117,9 @@ const App: React.FC = () => {
     return (
         <>
             <div
-                className="w-screen h-screen relative"
+                className="w-screen h-screen relative bg-center bg-cover bg-no-repeat"
                 style={{
                     background: `url(${currentlyPlayingAlbumUrl})`,
-                    backgroundPosition: 'center',
-                    backgroundSize: 'cover',
-                    backgroundRepeat: 'no-repeat',
                     filter: 'blur(50px)',
                 }}
             />
@@ -147,7 +141,7 @@ const App: React.FC = () => {
                             <div className="self-end flex flex-col text-white font-roboto">
                                 <span className="leading-none text-md">{currentlyPlayingArtists.join(', ')}</span>
                                 <span className="leading-none font-bold text-2xl mb-0.5">{currentlyPlayingSong}</span>
-                                <span className="leading-none text-md">{currentlyPlayingAlbum}</span>
+                                <span className="leading-none text-md">{currentlyPlayingAlbumName}</span>
                             </div>
                         </div>
                         <ControlSection currentlyPlaying={currentlyPlaying} />
