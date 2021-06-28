@@ -6,6 +6,14 @@ import useInterval from './lib/useInterval';
 
 // type ButtonProps = { id?: string, className?: string, onClick?: () => void, isClose?: boolean }
 
+type ProgressBarType = {
+    currentlyPlaying: unknown,
+}
+
+type ControlSectionType = {
+    currentlyPlaying: unknown,
+}
+
 // const Button: React.FC<ButtonProps> = ({ id, className, onClick, isClose, children }: PropsWithChildren<ButtonProps>) => (
 //     <button
 //         type="button"
@@ -30,18 +38,74 @@ import useInterval from './lib/useInterval';
 //     </div>
 // );
 
+const leadingZero = (num: Number): String => {
+    const numString = num.toString();
+
+    return num < 10 ? `0${numString}` : numString;
+};
+
+const ProgressBar: React.FC<ProgressBarType> = ({ currentlyPlaying }) => {
+    const progress = currentlyPlaying
+        ? currentlyPlaying.progress_ms
+        : 1;
+    const duration = currentlyPlaying
+        ? currentlyPlaying.item.duration_ms
+        : 1;
+
+    const percentage = Math.round((progress / duration) * 1000) / 10;
+
+    const progressAsTime = new Date(progress);
+    const progressAsString = `${leadingZero(progressAsTime.getMinutes())}:${leadingZero(progressAsTime.getSeconds())}`;
+
+    const durationAsTime = new Date(duration);
+    const durationAsString = `${leadingZero(durationAsTime.getMinutes())}:${leadingZero(durationAsTime.getSeconds())}`;
+
+    return (
+        <div className="flex-col">
+            <div className="h-1 bg-[#868686] bg-opacity-[58%] rounded-full">
+                <div
+                    className="h-full bg-white rounded-full flex"
+                    style={{ width: `${percentage}%` }}
+                >
+                    <div className="h-full w-full opacity-0 hover:opacity-100 relative flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-white absolute -right-1.5" />
+                    </div>
+                </div>
+            </div>
+            <div className="w-full mt-0.5 flex flex-row font-roboto font-bold text-white text-sm">
+                <span>{progressAsString}</span>
+                <span className="ml-auto">{durationAsString}</span>
+            </div>
+        </div>
+    );
+};
+
+const ControlSection: React.FC<ControlSectionType> = ({ currentlyPlaying }) => (
+    <div className="flex flex-col">
+        <ProgressBar currentlyPlaying={currentlyPlaying} />
+    </div>
+);
+
 const App: React.FC = () => {
     const [currentlyPlaying, setCurrentlyPlaying] = useState<unknown>();
 
-    const currentlyPlayingAlbumName = currentlyPlaying ? currentlyPlaying.item.album.name : '';
-    const currentlyPlayingAlbumUrl = currentlyPlaying ? currentlyPlaying.item.album.images[0].url : '';
-    const currentlyPlayingSong = currentlyPlaying ? currentlyPlaying.item.name : 'No song playing';
-    const currentlyPlayingArtists = currentlyPlaying ? Array.from(currentlyPlaying.item.artists, (artist) => artist.name) : ['-'];
-    const currentlyPlayingAlbum = currentlyPlaying ? currentlyPlaying.item.album.name : '-';
-    const currentlyPlayingProgress = currentlyPlaying ? currentlyPlaying.progress_ms : 0;
-    const currentlyPlayingDuration = currentlyPlaying ? currentlyPlaying.item.duration_ms : 1;
-
-    const currentlyPlayingPercentage = Math.round((currentlyPlayingProgress / currentlyPlayingDuration) * 1000) / 10;
+    // Detects if currently playing state is set and changes it to '' if it doesn't
+    const currentlyPlayingAlbumName = currentlyPlaying
+        ? currentlyPlaying.item.album.name
+        : '';
+    const currentlyPlayingAlbumUrl = currentlyPlaying
+        ? currentlyPlaying.item.album.images[0].url
+        : '';
+    const currentlyPlayingSong = currentlyPlaying
+        ? currentlyPlaying.item.name
+        : 'No song playing';
+    // Takes an array of Artists and turns it into an array of strings with the artists names
+    const currentlyPlayingArtists = currentlyPlaying
+        ? Array.from(currentlyPlaying.item.artists, (artist) => artist.name)
+        : ['-'];
+    const currentlyPlayingAlbum = currentlyPlaying
+        ? currentlyPlaying.item.album.name
+        : '-';
 
     const getCurrentlyPlaying = () => {
         invoke('get_currently_playing').then((r) => {
@@ -86,14 +150,7 @@ const App: React.FC = () => {
                                 <span className="leading-none text-md">{currentlyPlayingAlbum}</span>
                             </div>
                         </div>
-                        <div className="h-1 bg-[#868686] bg-opacity-[58%] rounded-full">
-                            <div
-                                className="h-full bg-white relative rounded-full flex"
-                                style={{ width: `${currentlyPlayingPercentage}%` }}
-                            >
-                                <div className="h-3 w-3 rounded-full bg-white absolute right-0 self-center" />
-                            </div>
-                        </div>
+                        <ControlSection currentlyPlaying={currentlyPlaying} />
                     </div>
                 </div>
             </div>

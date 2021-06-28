@@ -4,7 +4,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "serve": "vite preview",
-    "tauri": "tauri"
+    "tauri": "cd src-tauri && cargo tauri"
   },
   "dependencies": {
     "@tabler/icons": "^1.41.2",
@@ -12,8 +12,8 @@
     "react-dom": "^17.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/api": "^1.0.0-beta.3",
-    "@tauri-apps/cli": "1.0.0-beta.3",
+    "@flybywiresim/eslint-config": "^0.1.0",
+    "@tauri-apps/api": "^1.0.0-beta.4",
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
     "@typescript-eslint/eslint-plugin": "^4.28.0",
@@ -22,7 +22,6 @@
     "autoprefixer": "^10.2.6",
     "eslint": "^7.29.0",
     "eslint-plugin-import": "^2.23.4",
-    "@flybywiresim/eslint-config": "^0.1.0",
     "postcss": "^8.3.5",
     "tailwindcss": "^2.2.4",
     "typescript": "^4.3.2",
