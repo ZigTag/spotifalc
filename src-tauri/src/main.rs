@@ -4,17 +4,14 @@ windows_subsystem = "windows"
 )]
 
 use rspotify::{
-    blocking::oauth2::SpotifyOAuth,
-    blocking::util::{request_token, process_token},
-    blocking::oauth2::{TokenInfo, SpotifyClientCredentials},
-    blocking::client::Spotify,
+    oauth2::SpotifyOAuth,
+    util::{request_token, process_token},
+    oauth2::{TokenInfo, SpotifyClientCredentials},
+    client::Spotify,
     model::album::FullAlbum,
     model::context::CurrentlyPlayingContext
 };
-use tokio::{
-    fs,
-    time::Duration
-};
+use tokio::{fs, time::Duration};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -61,16 +58,18 @@ fn get_auth_token(state: tauri::State<TauriState>) -> Credentials {
 }
 
 #[tauri::command]
+#[tokio::main]
 async fn get_album(state: tauri::State<'_, TauriState>, album_id: String) -> Result<FullAlbum, String> {
-    match state.spotify_client.album(&album_id) {
+    match state.spotify_client.album(&album_id).await {
         Ok(album) => Ok(album),
         Err(err) => Err(err.to_string()),
     }
 }
 
 #[tauri::command]
+#[tokio::main]
 async fn get_currently_playing(state: tauri::State<'_, TauriState>) -> Result<Option<CurrentlyPlayingContext>, String> {
-    match state.spotify_client.current_playing(None, None) {
+    match state.spotify_client.current_playing(None, None).await {
         Ok(currently_playing) => Ok(currently_playing),
         Err(err) => Err(err.to_string()),
     }
@@ -153,17 +152,17 @@ fn get_spotify(token_info: TokenInfo) -> (Spotify, i64) {
 }
 
 async fn get_token_auto(spotify_oauth: &mut SpotifyOAuth, port: u16) -> Option<TokenInfo> {
-    match spotify_oauth.get_cached_token() {
+    match spotify_oauth.get_cached_token().await {
         Some(token_info) => Some(token_info),
         None => match redirect_uri_web_server(spotify_oauth, port) {
-            Ok(mut url) => process_token(spotify_oauth, &mut url),
+            Ok(mut url) => process_token(spotify_oauth, &mut url).await,
             Err(()) => {
                 println!("Starting webserver failed. Continuing with manual authentication");
                 request_token(spotify_oauth);
                 println!("Enter the URL you were redirected to: ");
                 let mut input = String::new();
                 match io::stdin().read_line(&mut input) {
-                    Ok(_) => process_token(spotify_oauth, &mut input),
+                    Ok(_) => process_token(spotify_oauth, &mut input).await,
                     Err(_) => None,
                 }
             }
