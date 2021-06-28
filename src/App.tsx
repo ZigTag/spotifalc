@@ -9,7 +9,8 @@ const Button: React.FC<ButtonProps> = ({ id, className, onClick, isClose, childr
     <button
         type="button"
         className={
-            `w-12 h-full flex flex-row justify-center items-center text-[#929190] ${isClose ? 'hover:bg-red-500 hover:bg-opacity-50' : 'hover:bg-black hover:bg-opacity-10'} ${className}`
+            `w-12 h-full flex flex-row justify-center items-center text-black text-opacity-50
+            ${isClose ? 'hover:bg-red-500 hover:bg-opacity-50' : 'hover:bg-black hover:bg-opacity-10'} ${className}`
         }
         onClick={onClick ?? (() => {})}
         id={id}
@@ -31,10 +32,15 @@ const TopBar: React.FC = () => (
 const App: React.FC = () => {
     const [bgArt, setBgArt] = useState<string>('');
 
-    const handleButton = () => {
-        invoke('get_now_playing', { albumId: '5ZCo1wqpAvjgHieipwTXzZ' }).then((r) => {
-            console.log(`'${r.images[0].url}'`);
+    const getAlbum = () => {
+        invoke('get_album', { albumId: '5ZCo1wqpAvjgHieipwTXzZ' }).then((r) => {
             setBgArt(r.images[0].url);
+        });
+    };
+
+    const getCurrentlyPlaying = () => {
+        invoke('get_currently_playing', { albumId: '5ZCo1wqpAvjgHieipwTXzZ' }).then((r) => {
+            setBgArt(r.item.album.images[0].url);
         });
     };
 
@@ -55,8 +61,10 @@ const App: React.FC = () => {
                 style={{ backgroundColor: 'rgba(68, 68, 68, 0.1)' }}
             >
                 <TopBar />
-                <p>Testing Text</p>
-                <button type="button" onClick={handleButton}>Testing button</button>
+                <div className="flex flex-col">
+                    <button type="button" onClick={getAlbum}>Get Album</button>
+                    <button type="button" onClick={getCurrentlyPlaying}>Get Currently Playing</button>
+                </div>
             </div>
         </>
     );

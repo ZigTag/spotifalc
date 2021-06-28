@@ -7,7 +7,9 @@ use rspotify::{
     blocking::oauth2::SpotifyOAuth,
     blocking::util::{request_token, process_token},
     blocking::oauth2::{TokenInfo, SpotifyClientCredentials},
-    blocking::client::Spotify
+    blocking::client::Spotify,
+    model::album::FullAlbum,
+    model::context::CurrentlyPlayingContext
 };
 use tokio::{
     fs,
@@ -22,7 +24,6 @@ use std::{
     time::SystemTime,
     io::{self, Read, Write},
 };
-use rspotify::model::album::FullAlbum;
 
 const CALLBACK_URL: &str = "http://localhost:3001/callback";
 
@@ -48,32 +49,6 @@ struct Credentials {
     expiry: i64,
 }
 
-#[derive(Serialize)]
-struct SpotifyAlbum {
-    images: Vec<SpotifyImage>,
-    name: String,
-    tracks: Vec<SpotifyTrack>,
-}
-
-#[derive(Serialize)]
-struct SpotifyImage {
-    height: i32,
-    width: i32,
-    url: String,
-}
-
-#[derive(Serialize)]
-struct SpotifyTrack {
-    artists: Vec<SpotifyTrackArtist>,
-    name: String,
-    track_number: i32,
-}
-
-#[derive(Serialize)]
-struct SpotifyTrackArtist {
-    name: String,
-}
-
 #[tauri::command]
 fn get_auth_token(state: tauri::State<TauriState>) -> Credentials {
     Credentials {
@@ -86,51 +61,19 @@ fn get_auth_token(state: tauri::State<TauriState>) -> Credentials {
 }
 
 #[tauri::command]
-async fn get_now_playing(state: tauri::State<'_, TauriState>, album_id: String) -> Result<FullAlbum, String> {
-    let album = state.spotify_client.album(&album_id);
-    let returnable = match album {
-        Ok(album) => {
-            // println!("{:?}", album);
-            //
-            // let mut images: Vec<SpotifyImage> = Vec::new();
-            //
-            // for i in album.images {
-            //     images.push(SpotifyImage {
-            //         height: i.height.unwrap_or(0) as i32,
-            //         width: i.width.unwrap_or(0) as i32,
-            //         url: i.url
-            //     })
-            // }
-            //
-            // let mut tracks: Vec<SpotifyTrack> = Vec::new();
-            //
-            // for i in album.tracks.items {
-            //     let mut track_artists: Vec<SpotifyTrackArtist> = Vec::new();
-            //
-            //     for j in i.artists {
-            //         track_artists.push(SpotifyTrackArtist {
-            //             name: j.name,
-            //         });
-            //     }
-            //
-            //     tracks.push(SpotifyTrack {
-            //         artists: track_artists,
-            //         name: i.name,
-            //         track_number: i.track_number as i32,
-            //     });
-            // }
-            //
-            // Ok(SpotifyAlbum {
-            //     images,
-            //     name: album.name,
-            //     tracks,
-            // })
-            Ok(album)
-        },
+async fn get_album(state: tauri::State<'_, TauriState>, album_id: String) -> Result<FullAlbum, String> {
+    match state.spotify_client.album(&album_id) {
+        Ok(album) => Ok(album),
         Err(err) => Err(err.to_string()),
-    };
+    }
+}
 
-    returnable
+#[tauri::command]
+async fn get_currently_playing(state: tauri::State<'_, TauriState>) -> Result<Option<CurrentlyPlayingContext>, String> {
+    match state.spotify_client.current_playing(None, None) {
+        Ok(currently_playing) => Ok(currently_playing),
+        Err(err) => Err(err.to_string()),
+    }
 }
 
 #[tokio::main]
@@ -164,7 +107,7 @@ async fn main() {
 
     tauri::Builder::default()
         .manage(TauriState { oauth, spotify_client, expiry })
-        .invoke_handler(tauri::generate_handler![get_auth_token, get_now_playing])
+        .invoke_handler(tauri::generate_handler![get_auth_token, get_album, get_currently_playing])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
