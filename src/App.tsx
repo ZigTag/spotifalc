@@ -14,6 +14,11 @@ type ControlSectionType = {
     currentlyPlaying: unknown,
 }
 
+type AlbumSectionType = {
+    currentlyPlaying: unknown,
+    currentlyPlayingAlbumUrl: string,
+}
+
 // const Button: React.FC<ButtonProps> = ({ id, className, onClick, isClose, children }: PropsWithChildren<ButtonProps>) => (
 //     <button
 //         type="button"
@@ -80,6 +85,34 @@ const ProgressBar: React.FC<ProgressBarType> = ({ currentlyPlaying }) => {
     );
 };
 
+const AlbumSection: React.FC<AlbumSectionType> = ({ currentlyPlaying, currentlyPlayingAlbumUrl }) => {
+    const currentlyPlayingAlbumName = currentlyPlaying
+        ? currentlyPlaying.item.album.name
+        : '-';
+    const currentlyPlayingSong = currentlyPlaying
+        ? currentlyPlaying.item.name
+        : 'No song playing';
+    // Takes an array of Artists and turns it into an array of strings with the artists names
+    const currentlyPlayingArtists = currentlyPlaying
+        ? Array.from(currentlyPlaying.item.artists, (artist) => artist.name)
+        : ['-'];
+
+    return (
+        <div className="flex flex-row space-x-4 mb-6">
+            <img
+                src={currentlyPlayingAlbumUrl}
+                className="w-1/3 h-1/3"
+                alt={currentlyPlayingAlbumName}
+            />
+            <div className="self-end flex flex-col text-white font-roboto">
+                <span className="leading-none text-md">{currentlyPlayingArtists.join(', ')}</span>
+                <span className="leading-none font-bold text-2xl mb-0.5">{currentlyPlayingSong}</span>
+                <span className="leading-none text-md">{currentlyPlayingAlbumName}</span>
+            </div>
+        </div>
+    );
+};
+
 const ControlSection: React.FC<ControlSectionType> = ({ currentlyPlaying }) => (
     <div className="flex flex-col">
         <ProgressBar currentlyPlaying={currentlyPlaying} />
@@ -90,19 +123,9 @@ const App: React.FC = () => {
     const [currentlyPlaying, setCurrentlyPlaying] = useState<unknown>();
 
     // Detects if currently playing state is set and changes it to '' if it doesn't
-    const currentlyPlayingAlbumName = currentlyPlaying
-        ? currentlyPlaying.item.album.name
-        : '-';
     const currentlyPlayingAlbumUrl = currentlyPlaying
         ? currentlyPlaying.item.album.images[0].url
         : '';
-    const currentlyPlayingSong = currentlyPlaying
-        ? currentlyPlaying.item.name
-        : 'No song playing';
-    // Takes an array of Artists and turns it into an array of strings with the artists names
-    const currentlyPlayingArtists = currentlyPlaying
-        ? Array.from(currentlyPlaying.item.artists, (artist) => artist.name)
-        : ['-'];
 
     const getCurrentlyPlaying = () => {
         invoke('get_currently_playing').then((r) => {
@@ -132,18 +155,7 @@ const App: React.FC = () => {
                 */}
                 <div className="pt-8 h-full overflow-y-hidden flex items-center align-center">
                     <div className="ml-4">
-                        <div className="flex flex-row space-x-4 mb-6">
-                            <img
-                                src={currentlyPlayingAlbumUrl}
-                                className="w-1/3 h-1/3"
-                                alt={currentlyPlayingAlbumName}
-                            />
-                            <div className="self-end flex flex-col text-white font-roboto">
-                                <span className="leading-none text-md">{currentlyPlayingArtists.join(', ')}</span>
-                                <span className="leading-none font-bold text-2xl mb-0.5">{currentlyPlayingSong}</span>
-                                <span className="leading-none text-md">{currentlyPlayingAlbumName}</span>
-                            </div>
-                        </div>
+                        <AlbumSection currentlyPlaying={currentlyPlaying} currentlyPlayingAlbumUrl={currentlyPlayingAlbumUrl} />
                         <ControlSection currentlyPlaying={currentlyPlaying} />
                     </div>
                 </div>
