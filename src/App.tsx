@@ -1,8 +1,21 @@
 import React, { useState } from 'react';
-// import { IconX, IconRectangle, IconMinus } from '@tabler/icons';
+import {
+    IconX,
+    IconRectangle,
+    IconMinus,
+    IconPlayerPlay,
+    IconPlayerSkipForward,
+    IconPlayerSkipBack,
+    IconPlayerTrackPrev,
+    IconPlayerTrackNext,
+    IconArrowForwardUp,
+    IconArrowBackUp, IconHeart, IconPlayerPause,
+} from '@tabler/icons';
 // import { appWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/tauri';
 import useInterval from './lib/useInterval';
+
+import noMusicIcon from '../assets/Music_Icon.png';
 
 // type ButtonProps = { id?: string, className?: string, onClick?: () => void, isClose?: boolean }
 
@@ -16,7 +29,6 @@ type ControlSectionType = {
 
 type AlbumSectionType = {
     currentlyPlaying: unknown,
-    currentlyPlayingAlbumUrl: string,
 }
 
 // const Button: React.FC<ButtonProps> = ({ id, className, onClick, isClose, children }: PropsWithChildren<ButtonProps>) => (
@@ -56,6 +68,9 @@ const ProgressBar: React.FC<ProgressBarType> = ({ currentlyPlaying }) => {
     const duration = currentlyPlaying
         ? currentlyPlaying.item.duration_ms
         : 1;
+    const isPlaying = currentlyPlaying
+        ? currentlyPlaying.is_playing
+        : false;
 
     const percentage = Math.round((progress / duration) * 1000) / 10;
 
@@ -64,6 +79,14 @@ const ProgressBar: React.FC<ProgressBarType> = ({ currentlyPlaying }) => {
 
     const durationAsTime = new Date(duration);
     const durationAsString = `${leadingZero(durationAsTime.getMinutes())}:${leadingZero(durationAsTime.getSeconds())}`;
+
+    const pausePlayback = () => {
+        invoke('pause_playback').then();
+    };
+
+    const startPlayback = () => {
+        invoke('start_playback').then();
+    };
 
     return (
         <div className="flex-col">
@@ -77,25 +100,77 @@ const ProgressBar: React.FC<ProgressBarType> = ({ currentlyPlaying }) => {
                     </div>
                 </div>
             </div>
-            <div className="w-full mt-0.5 flex flex-row font-roboto font-bold text-white text-sm">
+            <div className="w-full mt-0.5 flex flex-row font-roboto font-bold text-white text-xs">
                 <span>{progressAsString}</span>
                 <span className="ml-auto">{durationAsString}</span>
+            </div>
+            <div className="mt-2 flex flex-row justify-center space-x-8">
+                <button
+                    type="button"
+                    className="relative"
+                >
+                    <IconArrowBackUp size={30} color="#FFF" />
+                    <span className="absolute bottom-1 left-0.5 text-[0.7rem] text-white font-roboto">10</span>
+                </button>
+                <button
+                    type="button"
+                >
+                    <IconPlayerTrackPrev size={30} fill="#FFF" color="#FFF" strokeWidth="4" />
+                </button>
+                {isPlaying
+                    ? (
+                        <button
+                            type="button"
+                            onClick={pausePlayback}
+                        >
+                            <IconPlayerPause size={40} fill="#FFF" color="#FFF" strokeWidth="2" />
+                        </button>
+                    )
+                    : (
+                        <button
+                            type="button"
+                            onClick={startPlayback}
+                        >
+                            <IconPlayerPlay size={40} fill="#FFF" color="#FFF" strokeWidth="4" />
+                        </button>
+                    )}
+                <button
+                    type="button"
+                >
+                    <IconPlayerTrackNext size={30} fill="#FFF" color="#FFF" strokeWidth="4" />
+                </button>
+                <button
+                    type="button"
+                    className="relative"
+                >
+                    <IconArrowForwardUp size={30} color="#FFF" />
+                    <span className="absolute bottom-1 right-0.5 text-[0.7rem] text-white font-roboto">10</span>
+                </button>
+                <button
+                    type="button"
+                    className="relative"
+                >
+                    <IconHeart size={30} color="#FF0000" fill="#FF0000" strokeWidth={1} />
+                </button>
             </div>
         </div>
     );
 };
 
-const AlbumSection: React.FC<AlbumSectionType> = ({ currentlyPlaying, currentlyPlayingAlbumUrl }) => {
+const AlbumSection: React.FC<AlbumSectionType> = ({ currentlyPlaying }) => {
     const currentlyPlayingAlbumName = currentlyPlaying
         ? currentlyPlaying.item.album.name
-        : '-';
+        : '';
+    const currentlyPlayingAlbumUrl = currentlyPlaying
+        ? currentlyPlaying.item.album.images[0].url
+        : noMusicIcon;
     const currentlyPlayingSong = currentlyPlaying
         ? currentlyPlaying.item.name
         : 'No song playing';
     // Takes an array of Artists and turns it into an array of strings with the artists names
     const currentlyPlayingArtists = currentlyPlaying
         ? Array.from(currentlyPlaying.item.artists, (artist) => artist.name)
-        : ['-'];
+        : [''];
 
     return (
         <div className="flex flex-row space-x-4 mb-6">
@@ -123,9 +198,12 @@ const App: React.FC = () => {
     const [currentlyPlaying, setCurrentlyPlaying] = useState<unknown>();
 
     // Detects if currently playing state is set and changes it to '' if it doesn't
+    const currentlyPlayingAlbumName = currentlyPlaying
+        ? currentlyPlaying.item.album.name
+        : '-';
     const currentlyPlayingAlbumUrl = currentlyPlaying
         ? currentlyPlaying.item.album.images[0].url
-        : '';
+        : noMusicIcon;
 
     const getCurrentlyPlaying = () => {
         invoke('get_currently_playing').then((r) => {
@@ -138,9 +216,9 @@ const App: React.FC = () => {
     }, (1000));
 
     return (
-        <>
+        <div className="overflow-hidden">
             <div
-                className="w-screen h-screen relative bg-center bg-cover bg-no-repeat"
+                className="w-screen h-screen relative bg-center bg-cover bg-no-repeat transform scale-125"
                 style={{
                     background: `url(${currentlyPlayingAlbumUrl})`,
                     filter: 'blur(50px)',
@@ -153,14 +231,19 @@ const App: React.FC = () => {
                 {/* Disable until they fix decorations.
                     <TopBar />
                 */}
-                <div className="pt-8 h-full overflow-y-hidden flex items-center align-center">
-                    <div className="ml-4">
-                        <AlbumSection currentlyPlaying={currentlyPlaying} currentlyPlayingAlbumUrl={currentlyPlayingAlbumUrl} />
-                        <ControlSection currentlyPlaying={currentlyPlaying} />
+                <div className="h-full overflow-y-hidden flex flex-row items-center align-center">
+                    <div className="ml-8 mr-8">
+                        <div>
+                            <AlbumSection currentlyPlaying={currentlyPlaying} currentlyPlayingAlbumUrl={currentlyPlayingAlbumUrl} />
+                            <ControlSection currentlyPlaying={currentlyPlaying} />
+                        </div>
+                    </div>
+                    <div className="w-1/2 h-full bg-[#1B1B1B] bg-opacity-25 font-roboto text-white">
+                        <p className="font-medium text-sm mx-4 my-2">{currentlyPlayingAlbumName}</p>
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 

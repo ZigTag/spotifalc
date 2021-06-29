@@ -24,8 +24,9 @@ use std::{
 
 const CALLBACK_URL: &str = "http://localhost:3001/callback";
 
-const SCOPE: [&str; 1] = [
-    "user-read-currently-playing"
+const SCOPE: [&str; 2] = [
+    "user-read-currently-playing",
+    "user-modify-playback-state"
 ];
 
 #[derive(Deserialize)]
@@ -35,7 +36,6 @@ struct ConfigToml {
 }
 
 struct TauriState {
-    oauth: SpotifyOAuth,
     spotify_client: Spotify,
     expiry: i64,
 }
@@ -75,6 +75,24 @@ async fn get_currently_playing(state: tauri::State<'_, TauriState>) -> Result<Op
     }
 }
 
+#[tauri::command]
+#[tokio::main]
+async fn start_playback(state: tauri::State<'_, TauriState>) -> Result<(), String> {
+    match state.spotify_client.start_playback(None, None, None, None, None).await {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
+#[tauri::command]
+#[tokio::main]
+async fn pause_playback(state: tauri::State<'_, TauriState>) -> Result<(), String> {
+    match state.spotify_client.pause_playback(None).await {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let config_dir = dirs::preference_dir().unwrap().join("spotifalc");
@@ -105,8 +123,8 @@ async fn main() {
     }
 
     tauri::Builder::default()
-        .manage(TauriState { oauth, spotify_client, expiry })
-        .invoke_handler(tauri::generate_handler![get_auth_token, get_album, get_currently_playing])
+        .manage(TauriState { spotify_client, expiry })
+        .invoke_handler(tauri::generate_handler![get_auth_token, get_album, get_currently_playing, start_playback, pause_playback])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
