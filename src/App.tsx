@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 // import { appWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/tauri';
+import { updatePlayingState, selectCurrentlyPlaying } from './reducers/currentlyPlayingSlice';
+import { useAppDispatch, useAppSelector } from './utils/redux/hooks';
 import useInterval from './utils/useInterval';
 import noMusicIcon from '../assets/Music_Icon.png';
 
@@ -33,21 +34,16 @@ import { AlbumSection, ControlSection } from './pages/NowPlaying';
 // );
 
 const App: React.FC = () => {
-    const [currentlyPlaying, setCurrentlyPlaying] = useState<any>();
+    const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
+    const dispatch = useAppDispatch();
 
     // Detects if currently playing state is set and changes it to '' if it doesn't
     const currentlyPlayingAlbumUrl = currentlyPlaying
         ? currentlyPlaying.item.album.images[0].url
         : noMusicIcon;
 
-    const getCurrentlyPlaying = () => {
-        invoke('get_currently_playing').then((r) => {
-            setCurrentlyPlaying(r);
-        });
-    };
-
     useInterval(() => {
-        getCurrentlyPlaying();
+        dispatch(updatePlayingState());
     }, (1000));
 
     return (

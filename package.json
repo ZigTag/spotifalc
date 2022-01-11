@@ -7,9 +7,11 @@
     "tauri": "cd src-tauri && cargo tauri"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^1.7.1",
     "@tabler/icons": "^1.51.0",
     "react": "^17.0.0",
-    "react-dom": "^17.0.0"
+    "react-dom": "^17.0.0",
+    "react-redux": "^7.2.6"
   },
   "devDependencies": {
     "@flybywiresim/eslint-config": "^0.2.3",

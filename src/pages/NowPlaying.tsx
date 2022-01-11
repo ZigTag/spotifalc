@@ -11,24 +11,20 @@ import {
 } from '@tabler/icons';
 import noMusicIcon from '../../assets/Music_Icon.png';
 import { leadingZero } from '../utils/utils';
+import { useAppSelector } from '../utils/redux/hooks';
+import { selectCurrentlyPlaying } from '../reducers/currentlyPlayingSlice';
 
-type ProgressBarType = {
-    currentlyPlaying: any,
-}
+type ProgressBarType = {}
 
-type ControlButtonsType = {
-    currentlyPlaying: any,
-}
+type ControlButtonsType = {}
 
-type ControlSectionType = {
-    currentlyPlaying: any,
-}
+type ControlSectionType = {}
 
-type AlbumSectionType = {
-    currentlyPlaying: any,
-}
+type AlbumSectionType = {}
 
-const ProgressBar: React.FC<ProgressBarType> = ({ currentlyPlaying }) => {
+const ProgressBar: React.FC<ProgressBarType> = () => {
+    const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
+
     const progress = currentlyPlaying
         ? currentlyPlaying.progress_ms
         : 1;
@@ -64,7 +60,9 @@ const ProgressBar: React.FC<ProgressBarType> = ({ currentlyPlaying }) => {
     );
 };
 
-export const AlbumSection: React.FC<AlbumSectionType> = ({ currentlyPlaying }) => {
+export const AlbumSection: React.FC<AlbumSectionType> = () => {
+    const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
+
     const currentlyPlayingAlbumName = currentlyPlaying
         ? currentlyPlaying.item.album.name
         : '';
@@ -95,7 +93,9 @@ export const AlbumSection: React.FC<AlbumSectionType> = ({ currentlyPlaying }) =
     );
 };
 
-const ControlButtons: React.FC<ControlButtonsType> = ({ currentlyPlaying }) => {
+const ControlButtons: React.FC<ControlButtonsType> = () => {
+    const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
+
     const [prevCurrentlyPlaying, setPrevCurrentlyPlaying] = useState<any>();
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
@@ -186,9 +186,9 @@ const ControlButtons: React.FC<ControlButtonsType> = ({ currentlyPlaying }) => {
     );
 };
 
-export const ControlSection: React.FC<ControlSectionType> = ({ currentlyPlaying }) => (
+export const ControlSection: React.FC<ControlSectionType> = () => (
     <div className="flex flex-col">
-        <ProgressBar currentlyPlaying={currentlyPlaying} />
-        <ControlButtons currentlyPlaying={currentlyPlaying} />
+        <ProgressBar />
+        <ControlButtons />
     </div>
 );
