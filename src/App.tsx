@@ -65,8 +65,8 @@ const App: React.FC = () => {
                 <div className="h-full overflow-y-hidden flex flex-row items-center align-center">
                     <div className="ml-8 mr-8">
                         <div>
-                            <AlbumSection currentlyPlaying={currentlyPlaying} />
-                            <ControlSection currentlyPlaying={currentlyPlaying} />
+                            <AlbumSection />
+                            <ControlSection />
                         </div>
                     </div>
                     <div className="w-1/2 h-full bg-[#1B1B1B] bg-opacity-25 font-roboto text-white">
