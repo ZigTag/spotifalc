@@ -33,8 +33,7 @@ import { AlbumSection, ControlSection } from './pages/NowPlaying';
 //     </div>
 // );
 
-const App: React.FC = () => {
-    const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
+const App: React.FC = () => {const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
     const dispatch = useAppDispatch();
 
     // Detects if currently playing state is set and changes it to '' if it doesn't

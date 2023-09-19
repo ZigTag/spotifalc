@@ -8,7 +8,7 @@ import {
     IconArrowBackUp,
     IconPlayerPause,
     IconHeart,
-} from '@tabler/icons';
+} from '@tabler/icons-react';
 import noMusicIcon from '../../assets/Music_Icon.png';
 import { leadingZero } from '../utils/utils';
 import { useAppSelector } from '../utils/redux/hooks';
