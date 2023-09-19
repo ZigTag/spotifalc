@@ -21,6 +21,7 @@ use std::{
     time::SystemTime,
     io::{self, Read, Write},
 };
+use tokio::io::AsyncWriteExt;
 
 const CALLBACK_URL: &str = "http://localhost:3001/callback";
 
@@ -29,7 +30,7 @@ const SCOPE: [&str; 2] = [
     "user-modify-playback-state"
 ];
 
-#[derive(Deserialize)]
+#[derive(Deserialize,Serialize)]
 struct ConfigToml {
     client_id: String,
     client_secret: String,
@@ -155,7 +156,18 @@ async fn init_config(config_dir: PathBuf) -> ConfigToml {
     let config_file = config_dir.join("settings.toml");
 
     if !config_file.exists() {
-        fs::File::create(config_file.clone()).await.unwrap();
+        let config_new = ConfigToml {
+            client_id: String::new(),
+            client_secret: String::new(),
+        };
+
+        let mut file = fs::File::create(config_file.clone()).await.unwrap();
+
+        file.write_all(toml::to_string(&config_new).unwrap().as_bytes()).await.unwrap();
+
+        println!("Please add the client_id and client_secret to {:?}", config_file);
+
+        std::process::exit(1);
     }
 
     toml::from_str(&fs::read_to_string(config_file).await.unwrap_or(String::from(""))).unwrap()

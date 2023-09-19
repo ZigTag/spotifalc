@@ -4,7 +4,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "serve": "vite preview",
-    "tauri": "cargo tauri"
+    "tauri": "cargo tauri dev"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^1.7.1",
