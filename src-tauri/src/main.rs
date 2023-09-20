@@ -1,37 +1,31 @@
 #![cfg_attr(
-all(not(debug_assertions), target_os = "windows"),
-windows_subsystem = "windows"
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
 )]
 
+use rspotify::Config;
+use rspotify::prelude::{OAuthClient, BaseClient};
 use rspotify::{
-    model::album::FullAlbum,
-    model::context::CurrentlyPlayingContext,
-    prelude::*,
-    scopes, AuthCodeSpotify, Credentials, OAuth
+    model::album::FullAlbum, model::context::CurrentlyPlayingContext, scopes,
+    AuthCodeSpotify, Credentials, OAuth,
 };
-use std::{fs, time::Duration};
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+use std::fs;
 
-use std::{
-    net::{TcpListener, TcpStream},
-    path::PathBuf,
-    time::SystemTime,
-    io::{self, Read, Write},
+use rspotify::model::{
+    AdditionalType, AlbumId,
 };
-use std::ops::Deref;
-use rspotify::model::{AdditionalType, AlbumId, CurrentlyPlayingType, CurrentPlaybackContext, Type};
-use tokio::io::AsyncWriteExt;
-// use tokio::io::AsyncWriteExt;
+use std::{
+    io::Write,
+    path::PathBuf,
+};
+use env_logger::Env;
 
 const CALLBACK_URL: &str = "http://localhost:3001/callback";
 
-const SCOPE: [&str; 2] = [
-    "user-read-currently-playing",
-    "user-modify-playback-state"
-];
+const SCOPE: [&str; 2] = ["user-read-currently-playing", "user-modify-playback-state"];
 
-#[derive(Deserialize,Serialize)]
+#[derive(Deserialize, Serialize)]
 struct ConfigToml {
     client_id: String,
     client_secret: String,
@@ -62,7 +56,10 @@ struct CredentialsSerial {
 // }
 
 #[tauri::command]
-async fn get_album(state: tauri::State<'_, TauriState>, album_id: String) -> Result<FullAlbum, String> {
+async fn get_album(
+    state: tauri::State<'_, TauriState>,
+    album_id: String,
+) -> Result<FullAlbum, String> {
     let album_typed = AlbumId::from_id(album_id).unwrap();
 
     match state.spotify_client.album(album_typed, None).await {
@@ -72,10 +69,16 @@ async fn get_album(state: tauri::State<'_, TauriState>, album_id: String) -> Res
 }
 
 #[tauri::command]
-async fn get_currently_playing(state: tauri::State<'_, TauriState>) -> Result<Option<CurrentlyPlayingContext>, String> {
+async fn get_currently_playing(
+    state: tauri::State<'_, TauriState>,
+) -> Result<Option<CurrentlyPlayingContext>, String> {
     let additional_types = [AdditionalType::Track];
 
-    match state.spotify_client.current_playing(None, Some(&additional_types)).await {
+    match state
+        .spotify_client
+        .current_playing(None, Some(&additional_types))
+        .await
+    {
         Ok(currently_playing) => Ok(currently_playing),
         Err(err) => Err(err.to_string()),
     }
@@ -115,9 +118,16 @@ async fn previous_track(state: tauri::State<'_, TauriState>) -> Result<(), Strin
 
 #[tokio::main]
 async fn main() {
-    let config_dir = dirs::preference_dir().unwrap().join("spotifalc");
+    let env = Env::default()
+        .filter_or("MY_LOG_LEVEL", "trace")
+        .write_style_or("MY_LOG_STYLE", "always");
 
-    let config_toml = init_config(config_dir.clone());
+    env_logger::init_from_env(env);
+
+    let config_dir = dirs::preference_dir().unwrap().join("spotifalc");
+    let cache_dir = dirs::cache_dir().unwrap().join("spotifalc");
+
+    let (config_toml, cache_file) = init_config(config_dir.clone(), cache_dir.clone());
 
     let creds = Credentials::new(&config_toml.client_id, &config_toml.client_secret);
 
@@ -127,11 +137,24 @@ async fn main() {
         ..Default::default()
     };
 
-    let spotify_client = AuthCodeSpotify::new(creds, oauth);
+    let spotify_config = Config {
+        cache_path: cache_file,
+        token_cached: true,
+        token_refreshing: true,
+        ..Default::default()
+    };
+
+    let spotify_client = AuthCodeSpotify::with_config(creds, oauth, spotify_config);
+
+    println!("{:?}", spotify_client.config.cache_path);
 
     let url = spotify_client.get_authorize_url(false).unwrap();
 
+    spotify_client.refresh_token().await.unwrap();
+    
     spotify_client.prompt_for_token(&url).await.unwrap();
+    
+    spotify_client.write_token_cache().await.unwrap();
 
     // let mut oauth = SpotifyOAuth::default()
     //     .client_id(&config_toml.client_id)
@@ -157,18 +180,31 @@ async fn main() {
     // }
 
     tauri::Builder::default()
-        .manage(TauriState { spotify_client, /* expiry */ })
-        .invoke_handler(tauri::generate_handler![get_album, get_currently_playing, start_playback, pause_playback, next_track, previous_track])
+        .manage(TauriState {
+            spotify_client, /* expiry */
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_album,
+            get_currently_playing,
+            start_playback,
+            pause_playback,
+            next_track,
+            previous_track
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
-fn init_config(config_dir: PathBuf) -> ConfigToml {
+fn init_config(config_dir: PathBuf, cache_dir: PathBuf) -> (ConfigToml, PathBuf) {
     if !config_dir.exists() {
         fs::create_dir(config_dir.clone()).unwrap();
     }
+    if !cache_dir.exists() {
+        fs::create_dir(cache_dir.clone()).unwrap()
+    }
 
     let config_file = config_dir.join("settings.toml");
+    let cache_file = cache_dir.join("cache");
 
     if !config_file.exists() {
         let config_new = ConfigToml {
@@ -178,14 +214,24 @@ fn init_config(config_dir: PathBuf) -> ConfigToml {
 
         let mut file = fs::File::create(config_file.clone()).unwrap();
 
-        file.write_all(toml::to_string(&config_new).unwrap().as_bytes()).unwrap();
+        file.write_all(toml::to_string(&config_new).unwrap().as_bytes())
+            .unwrap();
 
-        println!("Please add the client_id and client_secret to {:?}", config_file);
+        println!(
+            "Please add the client_id and client_secret to {:?}",
+            config_file
+        );
 
         std::process::exit(1);
     }
 
-    toml::from_str(&fs::read_to_string(config_file).unwrap_or(String::from(""))).unwrap()
+    if !cache_file.exists() {
+        fs::File::create(cache_file.clone()).unwrap();
+    }
+    (
+        toml::from_str(&fs::read_to_string(config_file).unwrap_or(String::from(""))).unwrap(),
+        cache_file
+    )
 }
 
 // Code Mostly Copied from https://github.com/Rigellute/spotify-tui/blob/master/src

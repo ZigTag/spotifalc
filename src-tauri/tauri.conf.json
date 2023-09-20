@@ -6,8 +6,9 @@
   "build": {
     "distDir": "../dist",
     "devPath": "http://localhost:5173",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
+    "withGlobalTauri": false
   },
   "tauri": {
     "bundle": {
@@ -56,7 +57,7 @@
         "height": 650,
         "resizable": true,
         "fullscreen": false,
-        "decorations": true
+        "decorations": false
       }
     ],
     "security": {

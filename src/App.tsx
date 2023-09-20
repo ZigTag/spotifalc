@@ -1,5 +1,7 @@
-import React from 'react';
-// import { appWindow } from '@tauri-apps/api/window';
+import React, { PropsWithChildren } from 'react';
+import { appWindow } from '@tauri-apps/api/window';
+import { IconMinus, IconRectangle, IconX } from '@tabler/icons-react';
+
 import { updatePlayingState, selectCurrentlyPlaying } from './reducers/currentlyPlayingSlice';
 import { useAppDispatch, useAppSelector } from './utils/redux/hooks';
 import useInterval from './utils/useInterval';
@@ -7,33 +9,39 @@ import noMusicIcon from '../assets/Music_Icon.png';
 
 import { AlbumSection, ControlSection } from './pages/NowPlaying';
 
-// type ButtonProps = { id?: string, className?: string, onClick?: () => void, isClose?: boolean }
+type ButtonProps = { id?: string, className?: string, onClick?: () => void, isClose?: boolean }
 
-// const Button: React.FC<ButtonProps> = ({ id, className, onClick, isClose, children }: PropsWithChildren<ButtonProps>) => (
-//     <button
-//         type="button"
-//         className={
-//             `w-12 h-full flex flex-row justify-center items-center text-black text-opacity-50
-//             ${isClose ? 'hover:bg-red-500 hover:bg-opacity-50' : 'hover:bg-black hover:bg-opacity-10'} ${className}`
-//         }
-//         onClick={onClick ?? (() => {})}
-//         id={id}
-//     >
-//         {children}
-//     </button>
-// );
+const Button: React.FC<PropsWithChildren<ButtonProps>> = ({ id, className, onClick, isClose, children }) => (
+    <button
+        type="button"
+        className={
+            `w-12 h-full flex flex-row justify-center items-center text-black text-opacity-50
+            ${isClose ? 'hover:bg-red-500 hover:bg-opacity-50' : 'hover:bg-black hover:bg-opacity-10'} ${className}`
+        }
+        onClick={onClick ?? (() => {})}
+        id={id}
+    >
+        {children}
+    </button>
+);
 
-// const TopBar: React.FC = () => (
-//     <div className="h-8 w-full bg-[#0B0B0B] bg-opacity-25 select-none fixed" data-tauri-drag-region>
-//         <div className="h-full w-min ml-auto flex flex-row">
-//             <Button onClick={appWindow.minimize}><IconMinus size="15" /></Button>
-//             <Button onClick={appWindow.maximize}><IconRectangle size="15" /></Button>
-//             <Button onClick={appWindow.close} isClose><IconX size="15" /></Button>
-//         </div>
-//     </div>
-// );
+const TopBar: React.FC = () => (
+    <div className="h-8 w-full bg-[#0B0B0B] bg-opacity-25 select-none" data-tauri-drag-region>
+        <div className="h-full w-min ml-auto flex flex-row">
+            <Button onClick={() => appWindow.minimize()}><IconMinus size="15" /></Button>
+            <Button onClick={() => {
+                appWindow.isMaximized().then((value) => (value ? appWindow.unmaximize() : appWindow.maximize()));
+            }}
+            >
+                <IconRectangle size="15" />
+            </Button>
+            <Button onClick={() => appWindow.close()} isClose><IconX size="15" /></Button>
+        </div>
+    </div>
+);
 
-const App: React.FC = () => {const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
+const App: React.FC = () => {
+    const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
     const dispatch = useAppDispatch();
 
     // Detects if currently playing state is set and changes it to '' if it doesn't
@@ -55,12 +63,10 @@ const App: React.FC = () => {const currentlyPlaying = useAppSelector(selectCurre
                 }}
             />
             <div
-                className="w-screen h-screen absolute top-0 left-0"
+                className="w-screen h-screen absolute top-0 left-0 overflow-hidden"
                 style={{ backgroundColor: 'rgba(68, 68, 68, 0.1)' }}
             >
-                {/* Disable until they fix decorations.
-                    <TopBar />
-                */}
+                <TopBar />
                 <div className="h-full overflow-y-hidden flex flex-row items-center align-center">
                     <div className="ml-8 mr-8">
                         <div>
