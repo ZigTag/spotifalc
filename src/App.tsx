@@ -67,15 +67,20 @@ const App: React.FC = () => {
                 style={{ backgroundColor: 'rgba(68, 68, 68, 0.1)' }}
             >
                 <TopBar />
-                <div className="h-full overflow-y-hidden flex flex-row items-center align-center">
-                    <div className="ml-8 mr-8">
-                        <div>
-                            <AlbumSection />
-                            <ControlSection />
+                <div className="h-full w-full overflow-hidden flex flex-row items-center align-center">
+                    <div className="h-full w-full flex flex-col">
+                        <div className="h-16 w-full flex flex-row items-center">
+                            <p>hello</p>
+                        </div>
+                        <div className="grow flex ml-8 mr-8 items-center">
+                            <div className="grow pb-8">
+                                <AlbumSection />
+                                <ControlSection />
+                            </div>
                         </div>
                     </div>
-                    <div className="w-1/2 h-full bg-[#1B1B1B] bg-opacity-25 font-roboto text-white">
-                        <p className="font-medium text-sm mx-4 my-2">Currently Playing</p>
+                    <div className="w-1/2 h-full bg-[#1B1B1B] bg-opacity-25 font-roboto text-white basis-96">
+                        <p className="font-medium text-sm mx-4 my-2">Queue</p>
                     </div>
                 </div>
             </div>

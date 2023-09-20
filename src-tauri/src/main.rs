@@ -119,7 +119,7 @@ async fn previous_track(state: tauri::State<'_, TauriState>) -> Result<(), Strin
 #[tokio::main]
 async fn main() {
     let env = Env::default()
-        .filter_or("MY_LOG_LEVEL", "trace")
+        .filter_or("MY_LOG_LEVEL", "warn")
         .write_style_or("MY_LOG_STYLE", "always");
 
     env_logger::init_from_env(env);
@@ -146,7 +146,8 @@ async fn main() {
 
     let spotify_client = AuthCodeSpotify::with_config(creds, oauth, spotify_config);
 
-    println!("{:?}", spotify_client.config.cache_path);
+    log::info!("Config path: {}", config_dir.to_str().unwrap());
+    log::info!("Cache path: {}", spotify_client.config.cache_path.to_str().unwrap());
 
     let url = spotify_client.get_authorize_url(false).unwrap();
 
