@@ -26,8 +26,8 @@ devDependencies:
     specifier: ^0.2.3
     version: 0.2.3(@typescript-eslint/eslint-plugin@6.7.2)(eslint-config-airbnb@18.2.1)(eslint-plugin-import@2.28.1)(eslint-plugin-jsx-a11y@6.7.1)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-react@7.33.2)(eslint@8.49.0)
   '@tauri-apps/api':
-    specifier: ^1.0.0-beta.8
-    version: 1.0.0-beta.8
+    specifier: ^1.4.0
+    version: 1.4.0
   '@types/react':
     specifier: ^18.2.22
     version: 18.2.22
@@ -666,9 +666,9 @@ packages:
     resolution: {integrity: sha512-65GsJsT4ZBETWcdrNxbsjsbRoZvbVk3CcU2SafaElrzP1wpOeuAn9aELVEbxhdyZyP9dg2SCfgH6iAArJgp7lw==}
     dev: false
 
-  /@tauri-apps/api@1.0.0-beta.8:
-    resolution: {integrity: sha512-a56lXB7XvQ4+fKtT0pxpkjTSKhyrQ1Vmjyvt2ox3mT9xw3l7s8IOKHJ1WuqW6TA6xdoy3Cyja3Z3prw8hflS7g==}
-    engines: {node: '>= 12.13.0', npm: '>= 6.6.0', yarn: '>= 1.19.1'}
+  /@tauri-apps/api@1.4.0:
+    resolution: {integrity: sha512-Jd6HPoTM1PZSFIzq7FB8VmMu3qSSyo/3lSwLpoapW+lQ41CL5Dow2KryLg+gyazA/58DRWI9vu/XpEeHK4uMdw==}
+    engines: {node: '>= 14.6.0', npm: '>= 6.6.0', yarn: '>= 1.19.1'}
     dev: true
 
   /@types/hoist-non-react-statics@3.3.2:
