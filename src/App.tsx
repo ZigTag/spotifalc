@@ -1,6 +1,6 @@
 import React, { PropsWithChildren, useState } from 'react';
 import { appWindow } from '@tauri-apps/api/window';
-import { IconMinus, IconRectangle, IconX } from '@tabler/icons-react';
+import { IconBook, IconBookmark, IconDevices2, IconHome2, IconMinus, IconRectangle, IconSearch, IconSettings, IconShare, IconUser, IconX } from '@tabler/icons-react';
 
 import { invoke } from '@tauri-apps/api/tauri';
 import { updatePlayingState, selectCurrentlyPlaying } from './reducers/currentlyPlayingSlice';
@@ -12,7 +12,7 @@ import { AlbumSection, ControlSection } from './pages/NowPlaying';
 
 type ButtonProps = { id?: string, className?: string, onClick?: () => void, isClose?: boolean }
 
-const Button: React.FC<PropsWithChildren<ButtonProps>> = ({ id, className, onClick, isClose, children }) => (
+const TopButton: React.FC<PropsWithChildren<ButtonProps>> = ({ id, className, onClick, isClose, children }) => (
     <button
         type="button"
         className={
@@ -26,17 +26,51 @@ const Button: React.FC<PropsWithChildren<ButtonProps>> = ({ id, className, onCli
     </button>
 );
 
+const MenuButton: React.FC<PropsWithChildren<ButtonProps>> = ({ id, className, onClick, children }) => (
+    <button
+        type="button"
+        className={
+            `w-16 h-full flex flex-row justify-center items-center text-black text-opacity-50
+            opacity-30 hover:opacity-100 ${className}`
+        }
+        onClick={onClick ?? (() => {})}
+        id={id}
+    >
+        {children}
+    </button>
+);
+
 const TopBar: React.FC = () => (
     <div className="h-8 w-full bg-[#0B0B0B] bg-opacity-25 select-none" data-tauri-drag-region>
         <div className="h-full w-min ml-auto flex flex-row">
-            <Button onClick={() => appWindow.minimize()}><IconMinus size="15" /></Button>
-            <Button onClick={() => {
+            <TopButton onClick={() => appWindow.minimize()}><IconMinus size="15" color="#ffffff" /></TopButton>
+            <TopButton onClick={() => {
                 appWindow.isMaximized().then((value) => (value ? appWindow.unmaximize() : appWindow.maximize()));
             }}
             >
-                <IconRectangle size="15" />
-            </Button>
-            <Button onClick={() => appWindow.close()} isClose><IconX size="15" /></Button>
+                <IconRectangle size="15" color="#ffffff" />
+            </TopButton>
+            <TopButton onClick={() => appWindow.close()} isClose><IconX size="18" color="#ffffff" /></TopButton>
+        </div>
+    </div>
+);
+
+const TopMenu: React.FC<{ userInfo: any}> = ({ userInfo }) => (
+    <div className="h-16 w-full flex flex-row items-center px-4">
+        <MenuButton><IconSearch color="#ffffff" /></MenuButton>
+        <MenuButton><IconHome2 color="#ffffff" /></MenuButton>
+        <MenuButton><IconBookmark color="#ffffff" /></MenuButton>
+        <MenuButton><IconBook color="#ffffff" /></MenuButton>
+        <MenuButton><IconSettings color="#ffffff" /></MenuButton>
+        <MenuButton><IconDevices2 color="#ffffff" /></MenuButton>
+        <MenuButton><IconShare color="#ffffff" /></MenuButton>
+
+        <div className="flex text-white space-x-4 m-4 font-roboto font-md">
+            <span className="opacity-30">|</span>
+            <div className="flex space-x-2 opacity-30 hover:opacity-100">
+                <IconUser color="#ffffff" />
+                <span>{userInfo === null ? 'Nuh uh' : userInfo.display_name}</span>
+            </div>
         </div>
     </div>
 );
@@ -46,6 +80,7 @@ const App: React.FC = () => {
     const dispatch = useAppDispatch();
 
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [userInfo, setUserInfo] = useState<any>(null);
 
     const handleAuthenticate = () => {
         invoke('login').then();
@@ -60,6 +95,9 @@ const App: React.FC = () => {
         invoke('authenticated').then((val) => setIsAuthenticated(val as boolean));
 
         if (isAuthenticated) {
+            if (userInfo === null) {
+                invoke('get_me').then((val) => setUserInfo(val));
+            }
             dispatch(updatePlayingState());
         }
     }, (1000));
@@ -82,9 +120,7 @@ const App: React.FC = () => {
                         <TopBar />
                         <div className="h-full w-full overflow-hidden flex flex-row items-center align-center">
                             <div className="h-full w-full flex flex-col">
-                                <div className="h-16 w-full flex flex-row items-center">
-                                    <p>hello</p>
-                                </div>
+                                <TopMenu userInfo={userInfo} />
                                 <div className="grow flex ml-8 mr-8 items-center">
                                     <div className="grow pb-8">
                                         <AlbumSection />
@@ -98,7 +134,6 @@ const App: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
             ) : (
                 <div className="w-screen h-screen absolute top-0 left-0 overflow-hidden">
                     <TopBar />

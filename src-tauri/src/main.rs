@@ -15,7 +15,7 @@ use std::net::{TcpListener, TcpStream};
 use std::{fs, io};
 
 use env_logger::Env;
-use rspotify::model::{AdditionalType, AlbumId};
+use rspotify::model::{AdditionalType, AlbumId, PublicUser, PrivateUser};
 use std::{io::Write, path::PathBuf};
 
 const CALLBACK_URL: &str = "http://localhost:3001/callback";
@@ -166,6 +166,14 @@ async fn authenticated(state: tauri::State<'_, TauriState>) -> Result<bool, ()> 
     }
 }
 
+#[tauri::command]
+async fn get_me(state: tauri::State<'_, TauriState>) -> Result<PrivateUser, String> {
+    match state.spotify_client.me().await {
+        Ok(me) => Ok(me),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let env = Env::default()
@@ -241,7 +249,8 @@ async fn main() {
             next_track,
             previous_track,
             login,
-            authenticated
+            authenticated,
+            get_me
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
