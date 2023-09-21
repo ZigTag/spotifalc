@@ -1,7 +1,8 @@
-import React, { PropsWithChildren } from 'react';
+import React, { PropsWithChildren, useState } from 'react';
 import { appWindow } from '@tauri-apps/api/window';
 import { IconMinus, IconRectangle, IconX } from '@tabler/icons-react';
 
+import { invoke } from '@tauri-apps/api/tauri';
 import { updatePlayingState, selectCurrentlyPlaying } from './reducers/currentlyPlayingSlice';
 import { useAppDispatch, useAppSelector } from './utils/redux/hooks';
 import useInterval from './utils/useInterval';
@@ -44,46 +45,66 @@ const App: React.FC = () => {
     const currentlyPlaying = useAppSelector(selectCurrentlyPlaying);
     const dispatch = useAppDispatch();
 
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+    const handleAuthenticate = () => {
+        invoke('login').then();
+    };
+
     // Detects if currently playing state is set and changes it to '' if it doesn't
     const currentlyPlayingAlbumUrl = currentlyPlaying
         ? currentlyPlaying.item.album.images[0].url
         : noMusicIcon;
 
     useInterval(() => {
-        dispatch(updatePlayingState());
+        invoke('authenticated').then((val) => setIsAuthenticated(val as boolean));
+
+        if (isAuthenticated) {
+            dispatch(updatePlayingState());
+        }
     }, (1000));
 
     return (
-        <div className="overflow-hidden">
-            <div
-                className="w-screen h-screen relative bg-center bg-cover bg-no-repeat transform scale-125"
-                style={{
-                    background: `url(${currentlyPlayingAlbumUrl})`,
-                    filter: 'blur(50px)',
-                }}
-            />
-            <div
-                className="w-screen h-screen absolute top-0 left-0 overflow-hidden"
-                style={{ backgroundColor: 'rgba(68, 68, 68, 0.1)' }}
-            >
-                <TopBar />
-                <div className="h-full w-full overflow-hidden flex flex-row items-center align-center">
-                    <div className="h-full w-full flex flex-col">
-                        <div className="h-16 w-full flex flex-row items-center">
-                            <p>hello</p>
-                        </div>
-                        <div className="grow flex ml-8 mr-8 items-center">
-                            <div className="grow pb-8">
-                                <AlbumSection />
-                                <ControlSection />
+        <div>
+            { isAuthenticated ? (
+                <div className="overflow-hidden">
+                    <div
+                        className="w-screen h-screen relative bg-center bg-cover bg-no-repeat transform scale-125"
+                        style={{
+                            background: `url(${currentlyPlayingAlbumUrl})`,
+                            filter: 'blur(50px)',
+                        }}
+                    />
+                    <div
+                        className="w-screen h-screen absolute top-0 left-0 overflow-hidden"
+                        style={{ backgroundColor: 'rgba(68, 68, 68, 0.1)' }}
+                    >
+                        <TopBar />
+                        <div className="h-full w-full overflow-hidden flex flex-row items-center align-center">
+                            <div className="h-full w-full flex flex-col">
+                                <div className="h-16 w-full flex flex-row items-center">
+                                    <p>hello</p>
+                                </div>
+                                <div className="grow flex ml-8 mr-8 items-center">
+                                    <div className="grow pb-8">
+                                        <AlbumSection />
+                                        <ControlSection />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="w-1/2 h-full bg-[#1B1B1B] bg-opacity-25 font-roboto text-white basis-96">
+                                <p className="font-medium text-sm mx-4 my-2">Queue</p>
                             </div>
                         </div>
                     </div>
-                    <div className="w-1/2 h-full bg-[#1B1B1B] bg-opacity-25 font-roboto text-white basis-96">
-                        <p className="font-medium text-sm mx-4 my-2">Queue</p>
-                    </div>
                 </div>
-            </div>
+
+            ) : (
+                <div className="w-screen h-screen absolute top-0 left-0 overflow-hidden">
+                    <TopBar />
+                    <button onClick={handleAuthenticate} type="button">win</button>
+                </div>
+            )}
         </div>
     );
 };

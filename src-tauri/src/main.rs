@@ -3,25 +3,23 @@
     windows_subsystem = "windows"
 )]
 
+use rspotify::prelude::{BaseClient, OAuthClient};
 use rspotify::Config;
-use rspotify::prelude::{OAuthClient, BaseClient};
 use rspotify::{
-    model::album::FullAlbum, model::context::CurrentlyPlayingContext, scopes,
-    AuthCodeSpotify, Credentials, OAuth,
+    model::album::FullAlbum, model::context::CurrentlyPlayingContext, scopes, AuthCodeSpotify,
+    Credentials, OAuth,
 };
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::io::Read;
+use std::net::{TcpListener, TcpStream};
+use std::{fs, io};
 
-use rspotify::model::{
-    AdditionalType, AlbumId,
-};
-use std::{
-    io::Write,
-    path::PathBuf,
-};
 use env_logger::Env;
+use rspotify::model::{AdditionalType, AlbumId};
+use std::{io::Write, path::PathBuf};
 
 const CALLBACK_URL: &str = "http://localhost:3001/callback";
+const PORT: u16 = 3001;
 
 const SCOPE: [&str; 2] = ["user-read-currently-playing", "user-modify-playback-state"];
 
@@ -116,10 +114,62 @@ async fn previous_track(state: tauri::State<'_, TauriState>) -> Result<(), Strin
     }
 }
 
+#[tauri::command]
+async fn login(state: tauri::State<'_, TauriState>) -> Result<(), String> {
+    match state.spotify_client.read_token_cache(true).await {
+        Ok(Some(new_token)) => {
+            let expired = new_token.is_expired();
+
+            *state.spotify_client.get_token().lock().await.unwrap() = Some(new_token);
+
+            if expired {
+                match state.spotify_client.refetch_token().await.unwrap() {
+                    Some(refreshed_token) => {
+                        *state.spotify_client.get_token().lock().await.unwrap() =
+                            Some(refreshed_token);
+                    }
+                    None => {
+                        let url = state.spotify_client.get_authorize_url(false).unwrap();
+
+                        let code = state.spotify_client.parse_response_code(&launch_webserver(&url).unwrap()).unwrap();
+
+                        state
+                            .spotify_client
+                            .request_token(&code)
+                            .await
+                            .unwrap();
+                    }
+                }
+            }
+        }
+        _ => {
+            let url = state.spotify_client.get_authorize_url(false).unwrap();
+
+            let code = state.spotify_client.parse_response_code(&launch_webserver(&url).unwrap()).unwrap();
+
+            state.spotify_client.request_token(&code).await.unwrap();
+        }
+    }
+
+    state.spotify_client.write_token_cache().await.unwrap();
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn authenticated(state: tauri::State<'_, TauriState>) -> Result<bool, ()> {
+    match state.spotify_client.read_token_cache(true).await {
+        Ok(Some(token)) => {
+            Ok(!token.is_expired())
+        }
+        _ => Ok(false),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let env = Env::default()
-        .filter_or("MY_LOG_LEVEL", "warn")
+        .filter_or("MY_LOG_LEVEL", "trace")
         .write_style_or("MY_LOG_STYLE", "always");
 
     env_logger::init_from_env(env);
@@ -144,18 +194,17 @@ async fn main() {
         ..Default::default()
     };
 
-    let spotify_client = AuthCodeSpotify::with_config(creds, oauth, spotify_config);
+    let mut spotify_client = AuthCodeSpotify::with_config(creds, oauth, spotify_config);
 
     log::info!("Config path: {}", config_dir.to_str().unwrap());
-    log::info!("Cache path: {}", spotify_client.config.cache_path.to_str().unwrap());
+    log::info!(
+        "Cache path: {}",
+        spotify_client.config.cache_path.to_str().unwrap()
+    );
 
-    let url = spotify_client.get_authorize_url(false).unwrap();
-
-    spotify_client.refresh_token().await.unwrap();
-    
-    spotify_client.prompt_for_token(&url).await.unwrap();
-    
-    spotify_client.write_token_cache().await.unwrap();
+    if !config_toml.client_id.is_empty() && !config_toml.client_secret.is_empty() {
+        init_spotify(&mut spotify_client).await;
+    }
 
     // let mut oauth = SpotifyOAuth::default()
     //     .client_id(&config_toml.client_id)
@@ -190,10 +239,52 @@ async fn main() {
             start_playback,
             pause_playback,
             next_track,
-            previous_track
+            previous_track,
+            login,
+            authenticated
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+async fn init_spotify(spotify_client: &mut AuthCodeSpotify) {
+    match spotify_client.read_token_cache(true).await {
+        Ok(Some(new_token)) => {
+            let expired = new_token.is_expired();
+
+            *spotify_client.get_token().lock().await.unwrap() = Some(new_token);
+
+            if expired {
+                match spotify_client.refetch_token().await.unwrap() {
+                    Some(refreshed_token) => {
+                        *spotify_client.get_token().lock().await.unwrap() =
+                            Some(refreshed_token);
+                    }
+                    None => {
+                        let url = spotify_client.get_authorize_url(false).unwrap();
+
+                        let code = spotify_client.parse_response_code(&launch_webserver(&url).unwrap()).unwrap();
+
+                        spotify_client
+                            .request_token(&code)
+                            .await
+                            .unwrap();
+                    }
+                }
+            }
+        }
+        _ => {
+            let url = spotify_client.get_authorize_url(false).unwrap();
+
+            let code = spotify_client.parse_response_code(&launch_webserver(&url).unwrap()).unwrap();
+
+            spotify_client.request_token(&code).await.unwrap();
+        }
+    }
+
+    spotify_client.write_token_cache().await.unwrap();
+
+
 }
 
 fn init_config(config_dir: PathBuf, cache_dir: PathBuf) -> (ConfigToml, PathBuf) {
@@ -231,8 +322,29 @@ fn init_config(config_dir: PathBuf, cache_dir: PathBuf) -> (ConfigToml, PathBuf)
     }
     (
         toml::from_str(&fs::read_to_string(config_file).unwrap_or(String::from(""))).unwrap(),
-        cache_file
+        cache_file,
     )
+}
+
+fn launch_webserver(auth_url: &String) -> Option<String> {
+    open::that(auth_url);
+
+    match redirect_uri_web_server(PORT) {
+        Ok(url) => {
+            let new_url = "localhost:3001".to_string() + &url;
+
+            Some(new_url)
+        },
+        Err(()) => {
+            println!("Starting webserver failed. Continuing with manual authentication");
+            println!("Enter the URL you were redirected to: ");
+            let mut input = String::new();
+            match io::stdin().read_line(&mut input) {
+                Ok(input) => Some(input.to_string()),
+                Err(_) => None,
+            }
+        }
+    }
 }
 
 // Code Mostly Copied from https://github.com/Rigellute/spotify-tui/blob/master/src
@@ -279,77 +391,75 @@ fn init_config(config_dir: PathBuf, cache_dir: PathBuf) -> (ConfigToml, PathBuf)
 //         },
 //     }
 // }
-//
-// fn redirect_uri_web_server(spotify_oauth: &mut SpotifyOAuth, port: u16) -> Result<String, ()> {
-//     let listener = TcpListener::bind(format!("127.0.0.1:{}", port));
-//
-//     match listener {
-//         Ok(listener) => {
-//             request_token(spotify_oauth);
-//
-//             for stream in listener.incoming() {
-//                 match stream {
-//                     Ok(stream) => {
-//                         if let Some(url) = handle_connection(stream) {
-//                             return Ok(url);
-//                         }
-//                     }
-//                     Err(e) => {
-//                         println!("Error: {}", e);
-//                     }
-//                 };
-//             }
-//         }
-//         Err(e) => {
-//             println!("Error: {}", e);
-//         }
-//     }
-//
-//     Err(())
-// }
-//
-// fn handle_connection(mut stream: TcpStream) -> Option<String> {
-//     // The request will be quite large (> 512) so just assign plenty just in case
-//     let mut buffer = [0; 1000];
-//     let _ = stream.read(&mut buffer).unwrap();
-//
-//     // convert buffer into string and 'parse' the URL
-//     match String::from_utf8(buffer.to_vec()) {
-//         Ok(request) => {
-//             let split: Vec<&str> = request.split_whitespace().collect();
-//
-//             if split.len() > 1 {
-//                 respond_with_success(stream);
-//                 return Some(split[1].to_string());
-//             }
-//
-//             respond_with_error("Malformed request".to_string(), stream);
-//         }
-//         Err(e) => {
-//             respond_with_error(format!("Invalid UTF-8 sequence: {}", e), stream);
-//         }
-//     };
-//
-//     None
-// }
-//
-// fn respond_with_success(mut stream: TcpStream) {
-//     let contents = include_str!("redirect.html");
-//
-//     let response = format!("HTTP/1.1 200 OK\r\n\r\n{}", contents);
-//
-//     stream.write_all(response.as_bytes()).unwrap();
-//     stream.flush().unwrap();
-// }
-//
-// fn respond_with_error(error_message: String, mut stream: TcpStream) {
-//     println!("Error: {}", error_message);
-//     let response = format!(
-//         "HTTP/1.1 400 Bad Request\r\n\r\n400 - Bad Request - {}",
-//         error_message
-//     );
-//
-//     stream.write_all(response.as_bytes()).unwrap();
-//     stream.flush().unwrap();
-// }
+
+fn redirect_uri_web_server(port: u16) -> Result<String, ()> {
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port));
+
+    match listener {
+        Ok(listener) => {
+            for stream in listener.incoming() {
+                match stream {
+                    Ok(stream) => {
+                        if let Some(url) = handle_connection(stream) {
+                            return Ok(url);
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error: {}", e);
+                    }
+                };
+            }
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+        }
+    }
+
+    Err(())
+}
+
+fn handle_connection(mut stream: TcpStream) -> Option<String> {
+    // The request will be quite large (> 512) so just assign plenty just in case
+    let mut buffer = [0; 1000];
+    let _ = stream.read(&mut buffer).unwrap();
+
+    // convert buffer into string and 'parse' the URL
+    match String::from_utf8(buffer.to_vec()) {
+        Ok(request) => {
+            let split: Vec<&str> = request.split_whitespace().collect();
+
+            if split.len() > 1 {
+                respond_with_success(stream);
+                return Some(split[1].to_string());
+            }
+
+            respond_with_error("Malformed request".to_string(), stream);
+        }
+        Err(e) => {
+            respond_with_error(format!("Invalid UTF-8 sequence: {}", e), stream);
+        }
+    };
+
+    None
+}
+
+fn respond_with_success(mut stream: TcpStream) {
+    let contents = include_str!("redirect.html");
+
+    let response = format!("HTTP/1.1 200 OK\r\n\r\n{}", contents);
+
+    stream.write_all(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+}
+
+fn respond_with_error(error_message: String, mut stream: TcpStream) {
+    println!("Error: {}", error_message);
+    let response = format!(
+        "HTTP/1.1 400 Bad Request\r\n\r\n400 - Bad Request - {}",
+        error_message
+    );
+
+    stream.write_all(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+}
 // To here
